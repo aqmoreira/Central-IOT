@@ -144,6 +144,7 @@ void loop() {
     tone(BUZZER, 440, 100);
     Serial.print("Id:");
     Serial.println( String(ESP.getChipId()));
+     mostrarDisplay("Conectado\nIP: " + WiFi.localIP().toString() + "\nSSID: " + WiFi.SSID() + "\nMQTT State: "+ String(mqtt.state()) + "\nCruzamento:" + String(idCruzamento)  );   
 
   }
 
@@ -427,7 +428,7 @@ void conectar(){
       break;
     case 4:                                                       // WiFi up, MQTT up: finish MQTT configuration
       Serial.println("WIFI ON, MQTT ON: publish subscribe MQTT");
-       mostrarDisplay("Conectado\nIP: " + WiFi.localIP().toString() + "\nSSID: " + WiFi.SSID() + "\nMQTT State: "+ String(mqtt.state())  );   
+       mostrarDisplay("Conectado\nIP: " + WiFi.localIP().toString() + "\nSSID: " + WiFi.SSID() + "\nMQTT State: "+ String(mqtt.state()) + "\nCruzamento:" + String(idCruzamento)  );   
       eventosMQTT();
       statusConexao = 5;                    
       break;
