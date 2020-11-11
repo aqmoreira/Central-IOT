@@ -230,12 +230,9 @@ void controlarSemaforo(){
          tempoUltimaMudancaFase = millis();
         faseAnteriorSemaforo = faseAtualSemaforo;
         mostrarLed(LED_FASE_VERDE);
-      }else{
-        if ((millis() - tempoUltimaMudancaFase > tempoMaxVerde) || !isConectado()){
+      }else if(( !isConectado() && (millis() - tempoUltimaMudancaFase > tempoMinVerde)) 
+          || (millis() - tempoUltimaMudancaFase > tempoMaxVerde) ){
           faseAtualSemaforo = FASE_ON_AMARELO;
-          
-        }
-        
       }
       
       break; 
