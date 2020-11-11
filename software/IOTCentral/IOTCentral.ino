@@ -265,24 +265,44 @@ void controlarSemaforo(){
          tempoUltimaMudancaFase = millis();
         faseAnteriorSemaforo = faseAtualSemaforo;
         mostrarLed(LED_FASE_SEGURO);
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoSeguranca){
+          
+            faseAtualSemaforo = FASE_OFF_VERMELHO;
+        }
+         
+        
       }
+      
       
       break;   
    case FASE_OFF_VERMELHO:                                              
       Serial.println("FASE_OFF_VERMELHO");
        if(faseAtualSemaforo != faseAnteriorSemaforo){
          tempoUltimaMudancaFase = millis();
-        faseAnteriorSemaforo = faseAtualSemaforo;
-        mostrarLed(LED_FASE_VERMELHO);
+         faseAnteriorSemaforo = faseAtualSemaforo;
+         mostrarLed(LED_FASE_VERMELHO);
+       }else{
+        if (millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia){
+          faseAtualSemaforo = FASE_OFF_ALERTA;
+        }
       }
       
       break; 
    case FASE_OFF_ALERTA:                                               
       Serial.println("FASE_OFF_ALERTA");
       if(faseAtualSemaforo != faseAnteriorSemaforo){
-         tempoUltimaMudancaFase = millis();
+        tempoUltimaMudancaFase = millis();
         faseAnteriorSemaforo = faseAtualSemaforo;
         mostrarLed(LED_FASE_ALERTA);
+        tempoTrocadoVia =  millis();
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoAlerta){
+          faseAtualSemaforo = FASE_OFF_VERDE;
+          tempoUltimaMudancaFase = millis();
+        }else{
+          piscarVia();
+        }
       }
       break; 
    case FASE_OFF_VERDE:                                               
@@ -291,6 +311,12 @@ void controlarSemaforo(){
          tempoUltimaMudancaFase = millis();
         faseAnteriorSemaforo = faseAtualSemaforo;
         mostrarLed(LED_FASE_VERDE);
+      }else{
+        if ((millis() - tempoUltimaMudancaFase > tempoVerde) ){
+          faseAtualSemaforo = FASE_ON_AMARELO;
+          
+        }
+        
       }
       break; 
 
@@ -300,6 +326,18 @@ void controlarSemaforo(){
          tempoUltimaMudancaFase = millis();
         faseAnteriorSemaforo = faseAtualSemaforo;
         mostrarLed(LED_FASE_AMARELO);
+        tempoTrocadoPedestre = millis();
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoAmarelo){
+          if(isConectado){
+            faseAtualSemaforo = FASE_ON_VERMELHO;
+          }else{
+            faseAtualSemaforo = FASE_OFF_VERMELHO;
+          }
+         
+        }else{
+          piscarPedestre();
+        }
       }
       break; 
   }
