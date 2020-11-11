@@ -28,19 +28,26 @@ const int CSpino = D8; // Pino CS 74HC595
 //T2 T1 VM VD VM VD VM VD - Byte Superior
 //VM VD VM AM VD VM AM VD - Byte Inferior
 uint16_t semaforo = 0x0000;         //Status dos Leds cada bit em 1, acende
-byte fase_atual = 0;                //Fase Atual da Central
+ 
 
 
 //Tempos de monitoração
-unsigned long tempoRestart;         //Tempo para iniciar e indicação de amarelo piscante
-unsigned long tempoMaxEsperaVLT;    //Tempo máximo VLT fica esperando
-unsigned long tempoCruzamentoVLT;   //Tempo para VLT cruzar via quando estiver OFF
-unsigned long tempoMinVerde;        //Tempo mínimo verde de fluxo rua
-unsigned long tempoAlertaPiscante;  //tempo que fica piscando pedestre e via na mudança de fase
-unsigned long tempoAmarelo;         //Tempo da fase amarela
-unsigned long tempoUltimaTentativaReconectar; //Tempo da ultima tentativa de reconectar
+unsigned long tempoMaxCruzamentoVia = TEMPO_MAXIMO_CRUZAMENTO_VIA;//Tempo para VLT cruzar via Vermelho Rua
+unsigned long tempoMaxVerde = TEMPO_MAXIMO_VERDE;        //Tempo máximo verde - Mesmo Online 
+unsigned long tempoAlerta = TEMPO_ALERTA;          //Tempo alerta de mundaça de sinal via
+unsigned long tempoAmarelo = TEMPO_AMARELO;         //Tempo Amarelo 
+unsigned long tempoSeguranca = TEMPO_SEGURANCA;       //Tempo de Segurança qdo fica sem conexão e mudar fase
+unsigned long tempoVerde = TEMPO_VERDE;           //Tempo Verde 
+
+unsigned long tempoMaxEsperaVLT = TEMPO_MAXIMO_ESPERA_VLT;    //Tempo máximo VLT fica esperando
+unsigned long tempoMinVerde = TEMPO_MINIMO_VERDE;        //Tempo mínimo verde de fluxo rua
+unsigned long tempoAlertaPiscante = TEMPO_ALERTA_PISCANTE;  //tempo que fica piscando pedestre e via na mudança de fase
+
+
 unsigned long tempoAtual = 0;            //variável para usar de rascunho do tempo atual
-unsigned long tempoTrocadoAmarelo = 0; //armazena o tempo em milis que foi feita ultima troca
+unsigned long tempoTrocadoManutencao = 0; //armazena o tempo em milis que foi feita ultima troca
+unsigned long tempoTrocadoPedestre = 0; //armazena o tempo em milis que foi feita ultima troca
+unsigned long tempoTrocadoVia = 0; //armazena o tempo em milis que foi feita ultima troca
 unsigned long tempoRefreshRelogio = 0; //de qto tempo relógio deve ser acertado
 
 //Inicializa com valores defaul, se for diferente do valores gravados em config serão alterados
@@ -83,6 +90,13 @@ uint8_t statusConexao = 0;
 unsigned long tempoUltimaAtualizacao = 0;                // counter in example code for statusConexao == 5
 unsigned long lastTask = 0;                  // counter in example code for statusConexao <> 5
 
+unsigned long  tempoUltimaMudancaFase = 0; //Tempo da Ultima Mudança Fase  
+byte faseAtualSemaforo = 0;   //Fase atual do Semaforo
+byte faseAnteriorSemaforo = -1;   //Fase atual do Semaforo
+ 
+
+
+
 
 void setup() {
     Serial.begin(115200);
@@ -111,11 +125,10 @@ void setup() {
   delay(2000);
 
   lerPropriedades();
-  //iniciarWIFI();
-  //iniciarMQTT();
-  tempoUltimaTentativaReconectar = 0;
-      
-
+  
+  tempoUltimaMudancaFase = millis();    
+  faseAtualSemaforo = 0;   
+  faseAnteriorSemaforo = -1;
   
 
 }
@@ -126,8 +139,8 @@ void loop() {
     conectar();
     wm.process();
     
-  
-  piscarAmarelo();
+  controlarSemaforo();
+  //piscarManutencao();
 
 
 
@@ -155,6 +168,149 @@ void loop() {
 
 
 
+// Incompleto ainda.. falta fase offline   
+void controlarSemaforo(){
+
+  if ((WiFi.status() == WL_CONNECTED) && mqtt.connected() && (faseAtualSemaforo == FASE_INICIANDO)) { faseAtualSemaforo = FASE_ON_VERMELHO;}
+  if (( (WiFi.status() != WL_CONNECTED) || !mqtt.connected())  && (faseAtualSemaforo == FASE_INICIANDO)) { faseAtualSemaforo = FASE_OFF_SEGURO; }
+  
+  Serial.println("Fase:" + String(faseAtualSemaforo));
+  
+  switch (faseAtualSemaforo) {
+    
+    case FASE_INICIO:
+      Serial.println("FASE_INICIO");
+      if (millis() - tempoUltimaMudancaFase > 10000){
+         faseAtualSemaforo = FASE_INICIANDO;
+      }else{
+        piscarManutencao();
+      }
+    break;
+    
+    case FASE_INICIANDO:                                               
+      Serial.println("FASE_INICIANDO");
+      piscarManutencao();
+      
+      break;
+
+     case FASE_ON_VERMELHO:                                               
+      Serial.println("FASE_ON_VERMELHO");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+        tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_VERMELHO);
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia){
+          faseAtualSemaforo = FASE_ON_ALERTA;
+          tempoUltimaMudancaFase = millis();
+        }
+      }
+      break; 
+
+     case FASE_ON_ALERTA:                                               
+      Serial.println("FASE_ON_ALERTA");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+        tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_ALERTA);
+        tempoTrocadoVia =  millis();
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoAlerta){
+          faseAtualSemaforo = FASE_ON_VERDE;
+          tempoUltimaMudancaFase = millis();
+        }else{
+          piscarVia();
+        }
+      }
+      
+      break; 
+     case FASE_ON_VERDE:                                               
+      Serial.println("FASE_ON_VERDE");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_VERDE);
+      }else{
+        if ((millis() - tempoUltimaMudancaFase > tempoMaxVerde) || !isConectado()){
+          faseAtualSemaforo = FASE_ON_AMARELO;
+          
+        }
+        
+      }
+      
+      break; 
+    case FASE_ON_AMARELO:                                               
+      Serial.println("FASE_ON_AMARELO");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_AMARELO);
+        tempoTrocadoPedestre = millis();
+      }else{
+        if (millis() - tempoUltimaMudancaFase > tempoAmarelo){
+          if(isConectado){
+            faseAtualSemaforo = FASE_ON_VERMELHO;
+          }else{
+            faseAtualSemaforo = FASE_OFF_SEGURO;
+          }
+         
+        }else{
+          piscarPedestre();
+        }
+      }
+      break;   
+    case FASE_OFF_SEGURO:                                               
+      Serial.println("FASE_OFF_SEGURO");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_SEGURO);
+      }
+      
+      break;   
+   case FASE_OFF_VERMELHO:                                              
+      Serial.println("FASE_OFF_VERMELHO");
+       if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_VERMELHO);
+      }
+      
+      break; 
+   case FASE_OFF_ALERTA:                                               
+      Serial.println("FASE_OFF_ALERTA");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_ALERTA);
+      }
+      break; 
+   case FASE_OFF_VERDE:                                               
+      Serial.println("FASE_OFF_VERDE");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_VERDE);
+      }
+      break; 
+
+   case FASE_OFF_AMARELO:                                               
+      Serial.println("FASE_OFF_AMARELO");
+      if(faseAtualSemaforo != faseAnteriorSemaforo){
+         tempoUltimaMudancaFase = millis();
+        faseAnteriorSemaforo = faseAtualSemaforo;
+        mostrarLed(LED_FASE_AMARELO);
+      }
+      break; 
+  }
+}
+
+
+bool isConectado(){
+  return ((WiFi.status() == WL_CONNECTED) && mqtt.connected()); 
+}
+
+
 
 
 //callback de noticação que propriedades precisa ser salva
@@ -173,12 +329,6 @@ void gravarPropriedades(){
     json["mqttUser"]   = mqttUser;
     json["mqttPass"]   = mqttPass;
     json["idCruzamento"]   = idCruzamento;
-
-
-
-    // json["ip"]          = WiFi.localIP().toString();
-    // json["gateway"]     = WiFi.gatewayIP().toString();
-    // json["subnet"]      = WiFi.subnetMask().toString();
 
     File configFile = SPIFFS.open("/config.json", "w");
     if (!configFile) {
@@ -226,20 +376,6 @@ void lerPropriedades(){
           topicoCruzamento =  TOPICO_CENTRAL_CRUZAMENTO;
           topicoCruzamento += String(idCruzamento);
 
-
-
-
-
-
-          // if(json["ip"]) {
-          //   Serial.println("setting custom ip from config");
-          //   strcpy(static_ip, json["ip"]);
-          //   strcpy(static_gw, json["gateway"]);
-          //   strcpy(static_sn, json["subnet"]);
-          //   Serial.println(static_ip);
-          // } else {
-          //   Serial.println("no custom ip in config");
-          // }
 
         } else {
           Serial.println("Falha ao carregar arquivo config json");
@@ -430,7 +566,8 @@ void conectar(){
       Serial.println("WIFI ON, MQTT ON: publish subscribe MQTT");
        mostrarDisplay("Conectado\nIP: " + WiFi.localIP().toString() + "\nSSID: " + WiFi.SSID() + "\nMQTT State: "+ String(mqtt.state()) + "\nCruzamento:" + String(idCruzamento)  );   
       eventosMQTT();
-      statusConexao = 5;                    
+      statusConexao = 5;
+      contadorEspera = 0;                    
       break;
   }
 
@@ -484,10 +621,41 @@ void ligarTodosLeds() {
 }
 
 
-void piscarAmarelo() {
+void piscarVia() {
+   tempoAtual = millis();
+   if (tempoAtual - tempoTrocadoVia >= TEMPO_PISCA) {
+    tempoTrocadoVia = tempoAtual;
+    if (bitRead(semaforo, S5_VM)) {
+      bitClear(semaforo, S5_VM);
+      bitClear(semaforo, S6_VM);
+    } else {
+      bitSet(semaforo, S5_VM);
+      bitSet(semaforo, S6_VM);
+    }
+    mostrarLed(semaforo);
+   }
+}
+
+void piscarPedestre() {
+   tempoAtual = millis();
+   if (tempoAtual - tempoTrocadoPedestre >= TEMPO_PISCA) {
+    tempoTrocadoPedestre = tempoAtual;
+    if (bitRead(semaforo, S3_VM)) {
+      bitClear(semaforo, S3_VM);
+      bitClear(semaforo, S4_VM);
+    } else {
+      bitSet(semaforo, S3_VM);
+      bitSet(semaforo, S4_VM);
+    }
+     mostrarLed(semaforo);
+   }
+}
+
+
+void piscarManutencao() {
   tempoAtual = millis();
-  if (tempoAtual - tempoTrocadoAmarelo >= TEMPO_PISCA) {
-    tempoTrocadoAmarelo = tempoAtual;
+  if (tempoAtual - tempoTrocadoManutencao >= TEMPO_PISCA) {
+    tempoTrocadoManutencao = tempoAtual;
     if (bitRead(semaforo, S1_AM)) {
       bitClear(semaforo, S1_AM);
     } else {

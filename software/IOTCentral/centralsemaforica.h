@@ -6,6 +6,19 @@
 #define IDCruzamento    "9999"
 
 
+//Tempos das Fases
+#define TEMPO_MAXIMO_CRUZAMENTO_VIA   9000
+#define TEMPO_MAXIMO_VERDE           18000
+#define TEMPO_ALERTA                 30000
+#define TEMPO_AMARELO                 6000
+#define TEMPO_SEGURANCA               1000
+#define TEMPO_VERDE                  18000
+#define TEMPO_MAXIMO_ESPERA_VLT      24000
+#define TEMPO_MINIMO_VERDE           12000
+#define TEMPO_ALERTA_PISCANTE          300
+
+
+
 //Tópicos MQTT
 #define TOPICO_CENTRAL_CRUZAMENTO   "central/cruzamento/"   ; 
 #define TOPICO_VIA1_CRUZAMENTO      "via01/+/"
@@ -21,17 +34,27 @@
 #define SW3 D4
 #define BUZZER D6
 
-#define FASE_INICIANDO 0
-#define FASE_ON_VERMELHO 1
-#define FASE_ON_VERDE 2
-#define FASE_ON_AMARELO 3
-#define FASE_ON_ALERTA 4
+#define FASE_INICIO 0
+#define FASE_INICIANDO 1
+#define FASE_ON_VERMELHO 2
+#define FASE_ON_VERDE 3
+#define FASE_ON_AMARELO 4
+#define FASE_ON_ALERTA 5
 
-#define FASE_OFF_SEGURO 5
-#define FASE_OFF_VERMELHO 6
-#define FASE_OFF_VERDE 7
-#define FASE_OFF_AMARELO 8
-#define FASE_OFF_ALERTA 9
+#define FASE_OFF_SEGURO 6
+#define FASE_OFF_VERMELHO 7
+#define FASE_OFF_VERDE 8
+#define FASE_OFF_AMARELO 9
+#define FASE_OFF_ALERTA 10
+
+#define LED_FASE_VERMELHO 0x16A4
+#define LED_FASE_AMARELO 0x2A92
+#define LED_FASE_VERDE 0x2949
+#define LED_FASE_ALERTA 0x2AA4
+#define LED_FASE_MANUTENCAO 0x2A92
+#define LED_FASE_SEGURO 0xD6A4
+
+
 
 
 
