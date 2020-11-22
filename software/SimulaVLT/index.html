@@ -1,0 +1,487 @@
+<html>
+<head>
+  <!--https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js-->
+  <script src="mqttws31.js" type="text/javascript"></script>
+
+  <!--https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js-->
+  <script type = "text/javascript" src = "jquery.min.js"></script>
+ <script type="application/javascript">
+
+	var simuladorArea = {
+  		canvas : document.createElement("canvas"),
+  		start : function() {
+    		this.canvas.width = 660;
+    		this.canvas.height = 300;
+    		this.context = this.canvas.getContext("2d");
+            document.getElementById("divSimu").appendChild(this.canvas); 
+            this.interval = setInterval(updateGameArea, 20);
+            this.frameNo = 0;
+        
+	      	},
+	    clear : function() {
+         	   this.context.clearRect(0, 0, this.canvas.width,this.canvas.height);
+           }
+  		
+	}
+    const ZPP = 0;  //Zona Pedido de Prioridade
+    const ZCV = 1;  //Zona Cruzanmento de Via
+    const ZPC = 2  //Zona de Passagem concluída
+    var tremVLT1;
+    var tremVLT2;
+    var via01 = [];
+    var via02 = [];
+    var via01ZPP,via01ZCV,via01ZPC;
+    var isConectado = 0;  //Indica que esta conectado com servidor 0- OFFline 1-Conectado
+    var idCruzamento = "";
+
+	function iniciaSimulador() {
+         tremVLT1 = new trem("01","T001",660,115,false);
+         tremVLT2 = new trem("02","T002",-80,160,true);
+         
+         via01.push(new zona("D0FA8000",ZPP,600,130,false));
+         via01.push(new zona("D0FA8001",ZCV,405,120,false));
+         via01.push(new zona("D0FA8002",ZPC,195,125,false));
+         via02.push(new zona("D0FA8003",ZPP,60,165,true));
+         via02.push(new zona("D0FA8004",ZCV,252,170,true));
+         via02.push(new zona("D0FA8005",ZPC,465,160,true));
+    
+     		 simuladorArea.start();
+	}
+    
+   function updateGameArea() {
+    	simuladorArea.clear();
+      for (i = 0; i < via01.length; i += 1) {
+        if (tremVLT1.colisao(via01[i]) && via01[i].idTipoZona != tremVLT1.idTipoZona) {
+            tremVLT1.idTipoZona = via01[i].idTipoZona;
+            tremVLT1.idZona = via01[i].idZona;
+            console.log("Zona:" + getStrTipoZona(via01[i].idTipoZona) + " ID:" + tremVLT1.idZona +  " TREM:" +tremVLT1.id) ;
+            detectadoZona(tremVLT1);
+            //return;
+        } 
+      } 
+      for (i = 0; i < via02.length; i += 1) {
+        if (tremVLT2.colisao(via02[i]) && via02[i].idTipoZona != tremVLT2.idTipoZona ) {
+            tremVLT2.idTipoZona = via02[i].idTipoZona;
+            tremVLT2.idZona = via02[i].idZona;
+            console.log("Zona:" + getStrTipoZona(via02[i].idTipoZona) + " ID:" + tremVLT2.idZona + " TREM:" +tremVLT2.id) ;
+            detectadoZona(tremVLT2);
+            //return;
+        } 
+      } 
+
+
+
+      for (i = 0; i < via01.length; i++) {
+        via01[i].update();
+      }
+      for (i = 0; i < via02.length; i++) {
+        via02[i].update();
+      }
+      
+      tremVLT1.newPos();    
+    	tremVLT1.update();
+    	tremVLT2.newPos();    
+    	tremVLT2.update();
+      
+
+	} 
+    
+  function getStrTipoZona(idTipoZona){
+    var zonaStr = "";
+      switch (idTipoZona){
+        case 0:zonaStr="ZPP";break;
+        case 1:zonaStr="ZCV";break;
+        case 2:zonaStr="ZPC";break;
+      }
+    return zonaStr
+  }
+
+
+     function trem(via,id,x,y,rotate){
+        this.via = via;
+        this.zonaDetectada = -1;
+        this.idZona = "";
+        this.altura = 15;
+        this.largura= 80; 
+        this.xOri = x;
+        this.x = x;
+  	    this.y = y;
+        this.id = id;
+        this.speedX = 0.0;
+        this.speedY = 0.0;
+        this.rotate = rotate;
+        this.newPos = function() {
+            this.x += this.speedX;
+            if(this.rotate){
+            	if(this.x > simuladorArea.canvas.width){
+            		this.x = this.xOri
+            	}
+            }else{
+		
+            	if(this.x < -85){
+            		this.x = this.xOri
+            	}
+            }
+            
+        }
+  
+        this.colisao = function(zona) {
+          var esquerda = this.x;
+          var direita = this.x + (this.largura);
+          var cima = this.y;
+          var baixo = this.y + (this.altura);
+          var zonaEsquerda = zona.x;
+          var zonaDireita = zona.x + (zona.largura);
+          var zonaCima = zona.y;
+          var zonaBaixo = zona.y + (zona.altura);
+          var bateu = true;
+          if ((baixo < zonaCima) || (cima > zonaBaixo) || (direita < zonaEsquerda) || (esquerda > zonaDireita)) {
+         //   console.log("trem baixo:" + baixo+ " cima:" + cima + " direita:" + direita + " esquerda:"+esquerda );
+         //   console.log("zona baixo:" + zonaBaixo+ " cima:" + zonaCima + " direita:" + zonaDireita + " esquerda:"+zonaEsquerda );
+          
+              bateu = false;
+          }
+          return bateu;
+        }
+        this.update = function() {
+            ctx = simuladorArea.context;
+
+            ctx.save();
+            var cx     = this.x + 0.5 * 80;   
+            var cy     = this.y + 0.5 * 15;  
+            ctx.beginPath();
+			
+            if(rotate){
+              ctx.translate(cx,cy);
+              ctx.rotate( Math.PI );
+              ctx.translate(-cx,-cy);
+            }
+            ctx.moveTo(this.x,this.y);
+            ctx.lineTo(this.x+25,this.y+15);
+            ctx.lineTo(this.x+80,this.y+15);
+            ctx.lineTo(this.x+80,this.y-15);
+            ctx.lineTo(this.x+25,this.y-15);
+	    	    ctx.fillStyle = "yellow"
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "red"
+            ctx.font='bold 20px Arial';
+            if(rotate){
+             	ctx.translate(cx,cy);
+            	ctx.rotate( Math.PI );
+            	ctx.translate(-cx,-cy);
+            	ctx.fillText(this.id, cx-30,cy+15);
+            }else{
+            	ctx.fillText(this.id, cx-15,cy);
+            }
+            
+            ctx.restore();
+        };
+     } 
+     
+
+
+     function zona(idZona,idTipoZona,x,y,rotate){
+        this.idZona =  idZona;
+        this.altura =  10;
+        this.largura = 5;
+        this.xOri = x;
+        this.x = x;
+  	    this.y = y;
+        this.idTipoZona = idTipoZona;
+        this.speedX = 0.0;
+        this.speedY = 0.0;
+        this.rotate = rotate;
+        
+        this.newPos = function() {
+            this.x += this.speedX;
+        }
+
+       
+
+        this.update = function() {
+            ctx = simuladorArea.context;
+
+            ctx.beginPath();
+            ctx.save();
+            var cx     = this.x + 0.5 * this.largura;   
+            var cy     = this.y + 0.5 * this.altura; 
+
+            if(rotate){
+              ctx.translate(cx,cy);
+              ctx.rotate( Math.PI );
+              ctx.translate(-cx,-cy);
+            }
+
+            
+            switch (idTipoZona) {
+                case ZPP:
+                  let height = this.altura*2 * Math.cos(Math.PI / 6);
+                  ctx.moveTo(this.x, this.y);
+                  ctx.lineTo(this.x+20, this.y);
+                  ctx.lineTo(this.x+10, this.y - height);
+                  ctx.fillStyle = "blue"
+                break;
+                
+                case ZCV:
+                  ctx.moveTo(this.x, this.y);
+                  ctx.arc(this.x,this.y,10,0,2*Math.PI);
+                  ctx.fillStyle = "red"
+                break;
+
+                case ZPC:
+                  let tamanho = 10;
+                  ctx.moveTo(this.x, this.y);
+                  ctx.lineTo(this.x+tamanho, this.y-tamanho);
+                  ctx.lineTo(this.x, this.y-tamanho*2);
+                  ctx.lineTo(this.x-tamanho, this.y-tamanho);
+                  ctx.fillStyle = "#00ff00ff"
+                break;
+
+
+             }
+
+            ctx.closePath();
+            ctx.fill();
+            //ctx.stroke();
+            ctx.restore();
+           
+        };
+     }
+
+
+function pararVLT1() {
+  tremVLT1.speedX = 0; 
+  movimentoTrem(tremVLT1);
+}
+
+function pararVLT2() {
+	tremVLT2.speedX = 0; 
+  movimentoTrem(tremVLT2);
+}
+
+
+
+function iniciaVLT1() {
+  tremVLT1.id = document.getElementById("idVlt1").value;
+  tremVLT1.speedX = -1  * parseFloat(document.getElementById("velo1").value); 
+  movimentoTrem(tremVLT1);
+}
+
+function iniciaVLT2() {
+	tremVLT2.id = document.getElementById("idVlt2").value;
+  tremVLT2.speedX = parseFloat(document.getElementById("velo2").value); 
+  movimentoTrem(tremVLT2);
+}
+
+  /** MQTT Funções */
+
+function movimentoTrem(objTrem){
+  var velo = Math.abs(objTrem.speedX);
+  var sts = (velo!=0)?"Andando":"Parado";
+  
+  if (isConectado == 0) {
+    document.getElementById("messages").innerHTML = "Simulador esta desconectado. Evento não serão informados.";
+    console.log("Simulador esta desconectado. Evento não serão informados.");
+  }else{
+
+    var msg = "id:"+objTrem.id+",Status:"+ sts + ",Velo:" + velo 
+    console.log(msg);
+    message = new Paho.MQTT.Message(msg);
+    //"via01/+/"
+    message.destinationName = "via"+ objTrem.via + "/status";
+    mqtt.send(message);
+
+  }  
+  console.log("Alteração no movimento do Trem");
+  console.log("Trem:" + objTrem.id + " Status:" + sts + " Velocidade:" + velo);
+
+}
+
+function detectadoZona(objTrem){
+  var velo = Math.abs(objTrem.speedX);
+
+  var zonaStr = getStrTipoZona(objTrem.idTipoZona);
+  
+
+  if (isConectado == 0) {
+    document.getElementById("messages").innerHTML = "Simulador esta desconectado. Evento de detecção de zona não serão informados.";
+    console.log("Simulador esta desconectado. Evento de detecção de zona não serão informados.");
+  }else{
+
+    var msg = objTrem.id+objTrem.idZona
+    console.log(msg);
+    message = new Paho.MQTT.Message(msg);
+    //"via01/+/"
+    message.destinationName = "via"+ objTrem.via + "/" + zonaStr + "/" + idCruzamento
+    mqtt.send(message);
+
+  }  
+  console.log("Trem em zona de RFID.");
+  console.log("Trem:" + objTrem.id + "via"+ objTrem.via + " Zona:" + zonaStr + " ID Zona:" +objTrem.idZona  + " Velocidade:" + velo);
+
+}
+
+
+
+
+function onConnectionLost(responseObject) {
+  if (responseObject.errorCode !== 0) {
+    console.log("onConnectionLost:"+responseObject.errorMessage);
+  }
+    console.log("Perdeu conexão com MQTT");
+    document.getElementById("status").innerHTML = "Offline MQTT";
+    document.getElementById("messages").innerHTML = "Offline MQTT";
+    isConectado = 0;
+  }
+  function onFailure(message) {
+    console.log("Falha no envio");
+    document.getElementById("messages").innerHTML = "Conexão falhou - Tentanto Reconectar";
+    setTimeout(MQTTconnect, reconnectTimeout);
+  }
+  function onMessageArrived(r_message) {
+    out_msg = "Mensagem Recebida:" + r_message.payloadString + "<br>";
+    out_msg = out_msg + "Tópico:" + r_message.destinationName;
+    console.log("Messagem recebida:",r_message.payloadString);
+    console.log(out_msg);
+    document.getElementById("messages").innerHTML = out_msg;
+  }
+  function onConnected(recon, url) {
+    console.log("Já conectado em " + reconn + " url:" + url);
+  }
+  function onConnect() {
+    // Once a connection has been made, make a subscription and send a message.
+    document.getElementById("messages").innerHTML = "Conectado em " + host + " na porta " + port;
+    isConectado = 1
+    document.getElementById("status").innerHTML = "Conectado";
+    console.log("IsConectado: " + isConectado);
+    //mqtt.subscribe("sensor1");
+    //message = new Paho.MQTT.Message("Hello World");
+    //message.destinationName = "sensor1";
+    //mqtt.send(message);
+  }
+
+  function MQTTconnect() {
+    document.getElementById("messages").innerHTML = "";
+    var s = document.getElementById("srvMQTT").value
+    var p = document.getElementById("prtMQTT").value
+    //inicializa o idCruzamento para envio das mensagens
+    idCruzamento = document.getElementById("idCruzamento").value
+
+
+    console.log("Informado: ");
+    if (s != "") {
+      host = s;
+      console.log("host:" + host);
+    }
+    if (p != "") {
+      port = parseInt(p);
+      console.log(" porta:" + port);
+    }
+
+    console.log("Conectando em " + host + " " + port);
+    mqtt = new Paho.MQTT.Client(host, port, "Simulador011");
+    //document.write("connecting to "+ host);
+    var options = {
+      timeout: 3,
+      onSuccess: onConnect,
+      onFailure: onFailure,
+
+    };
+
+    mqtt.onConnectionLost = onConnectionLost;
+    mqtt.onMessageArrived = onMessageArrived;
+    mqtt.onConnected = onConnected;
+
+    mqtt.connect(options);
+    return false;
+
+
+  }
+  function sub_topics() {
+    document.getElementById("messages").innerHTML = "";
+    if (connected_flag == 0) {
+      out_msg = "<b>Not Connected so can't subscribe</b>"
+      console.log(out_msg);
+      document.getElementById("messages").innerHTML = out_msg;
+      return false;
+    }
+    var stopic = document.forms["subs"]["Stopic"].value;
+    console.log("Subscribing to topic =" + stopic);
+    mqtt.subscribe(stopic);
+    return false;
+  }
+  function send_message() {
+    document.getElementById("messages").innerHTML = "";
+    if (connected_flag == 0) {
+      out_msg = "<b>Not Connected so can't send</b>"
+      console.log(out_msg);
+      document.getElementById("messages").innerHTML = out_msg;
+      return false;
+    }
+    var msg = document.forms["smessage"]["message"].value;
+    console.log(msg);
+
+    var topic = document.forms["smessage"]["Ptopic"].value;
+    message = new Paho.MQTT.Message(msg);
+    if (topic == "")
+      message.destinationName = "test-topic"
+    else
+      message.destinationName = topic;
+    mqtt.send(message);
+    return false;
+  }
+    
+  </script>
+
+<style>
+.center {
+  margin: auto;
+  width: 660px;
+  height:300px;
+  border: 3px solid #73AD21;
+  padding: 10px;
+}
+.center1 {
+  margin: auto;
+  width: 660px;
+  height:120px;
+  border: 3px solid #73AD21;
+  padding: 10px;
+}
+
+</style>
+
+</head>
+
+
+<body onload="iniciaSimulador()">
+<div class="center" id="divSimu" style=" background-image: url(cruzamento.svg);">
+
+
+
+
+</div>
+<br>
+<div class="center1" style="text-align:center;width:480px;height:60px;">
+<label>ID VLT:</label><input  id="idVlt1" value="T001" size="4" name="idVlt1"/>  <label>Velocidade: </label> <input  id="velo1" value="1" size="4" name="velo1"/>
+  <button onclick="iniciaVLT1()">Acelerar VLT1</button> <button onclick="pararVLT1()">Parar VLT1</button><br>
+  <label>ID VLT:</label><input  id="idVlt2" value="T002" size="4" name="idVlt2"/>  <label>Velocidade: </label> <input  id="velo2" value="1" size="4" name="velo2" />
+  <button onclick="iniciaVLT2()">Acelerar VLT2</button> <button onclick="pararVLT2()">Parar VLT2</button> <br>
+</div>
+
+<div class="center1" style="text-align:center;width:480px;">
+  <div style="text-align:left;" >
+    <label>ID Cruzamento:</label><input  id="idCruzamento" value="C2020" size="5" name="idCruzamento"/><br>
+    <label>Servidor: </label><input type="text" id="srvMQTT" name="srvMQTT" size="30" value="broker.mqttdashboard.com" >   <label>Porta: </label><input type="text" size="4" id="prtMQTT" name="prtMQTT" value="8000" > <br/><br/>
+    <button onclick="MQTTconnect()"> Conectar</button><br><br>
+    <div id="status">Connection Status: Not Connected</div><br><br>
+  </div>
+</div>
+
+Menssagens:<p id="messages"></p>
+</body>
+
+
+</html>
