@@ -62,6 +62,9 @@ PubSubClient mqtt(espClient); // Instancia o Cliente MQTT passando o objeto espC
 
 
 String topicoCruzamento ;    //tópico de publocação status central/cruzamento/<idCruzamento>
+
+ 
+
 const char* statusCentral = "Ativo e operando";
 
 WiFiEventHandler gotIpEventHandler,disconnectedEventHandler;
@@ -459,18 +462,42 @@ void callbackMQTT(char* topic, byte* payload, unsigned int length) {
     
   }
   Serial.println("msg:" + msgPayload);
-   mostrarDisplay("MQTT recebida \nTópico:\n" + String(topic) + "\nMensagem:\n" +   msgPayload);
+ // mostrarDisplay("MQTT recebida \nTópico:\n" + String(topic) + "\nMensagem:\n" +   msgPayload);
 
+//Convertendo para String para facilitar
+String strTopico = topic;
 
-
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is active low on the ESP-01)
-  } else {
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+  if (strTopico.indexOf("via01/ZPP")==0){
+    Serial.println("Via 01 ZPP Mensagem:" + msgPayload);
+     mostrarDisplay("Via 01\nZPP\nMensagem:\n" +   msgPayload);
+    return;
   }
+  if (strTopico.indexOf("via01/ZCV")==0){
+    Serial.println("Via 01 ZCV Mensagem:" + msgPayload);
+    mostrarDisplay("Via 01\nZCV\nMensagem:\n" +   msgPayload);
+    return;
+  }
+  if (strTopico.indexOf("via01/ZPC")==0){
+    Serial.println("Via 01 ZPC Mensagem:" + msgPayload);
+    mostrarDisplay("Via 01\nZPC\nMensagem:\n" +   msgPayload);
+    return;
+  }
+  if (strTopico.indexOf("via02/ZPP")==0){
+    Serial.println("Via 02 ZPP Mensagem:" + msgPayload);
+    mostrarDisplay("Via 02\nZPP\nMensagem:\n" +   msgPayload);
+    return;
+  }
+  if (strTopico.indexOf("via02/ZCV")== 0){
+    Serial.println("Via 02 ZCV Mensagem:" + msgPayload);
+    mostrarDisplay("Via 02\nZCV\nMensagem:\n" +   msgPayload);
+    return;
+  }
+  if (strTopico.indexOf("via02/ZPC")== 0){
+    Serial.println("Via 02 ZPC Mensagem:" + msgPayload);
+    mostrarDisplay("Via 02\nZPC\nMensagem:\n" +   msgPayload);
+    return;
+  }
+  
 
 }
 
