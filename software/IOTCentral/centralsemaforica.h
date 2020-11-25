@@ -7,14 +7,14 @@
 
 
 //Tempos das Fases
-#define TEMPO_MAXIMO_CRUZAMENTO_VIA   9000
-#define TEMPO_MAXIMO_VERDE           25000
-#define TEMPO_ALERTA                 10000
-#define TEMPO_AMARELO                 6000
+#define TEMPO_MAXIMO_CRUZAMENTO_VIA  30000
+#define TEMPO_MAXIMO_VERDE          180000  
+#define TEMPO_ALERTA                  5000  //Tempo de alerta de mudança de fase pedestre e via
+#define TEMPO_AMARELO                10000  //tempo AMARELO ON e OFF
 #define TEMPO_SEGURANCA               3000
-#define TEMPO_VERDE                  18000
+#define TEMPO_VERDE                  18000  //tempo VERDE OFF
 #define TEMPO_MAXIMO_ESPERA_VLT      25000
-#define TEMPO_MINIMO_VERDE           12000
+#define TEMPO_MINIMO_VERDE            6000
 #define TEMPO_ALERTA_PISCANTE          300
 
 
@@ -54,6 +54,10 @@
 #define LED_FASE_MANUTENCAO 0x2A92
 #define LED_FASE_SEGURO 0x2AA4
 
+#define ZONA_OFF 9
+#define ZONA_ZPP 0
+#define ZONA_ZCV 1
+#define ZONA_ZPC 2
 
 
 
