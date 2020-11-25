@@ -1,5 +1,6 @@
 <html>
 <head>
+  <title>Simulador VLT</title>
   <!--https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js-->
   <script src="mqttws31.js" type="text/javascript"></script>
 
@@ -381,7 +382,8 @@ function onConnectionLost(responseObject) {
     }
 
     console.log("Conectando em " + host + " " + port);
-    mqtt = new Paho.MQTT.Client(host, port, "Simulador011");
+    var clientID = "Simulador" + new Date().getTime();
+    mqtt = new Paho.MQTT.Client(host, port, clientID);
     //document.write("connecting to "+ host);
     var options = {
       timeout: 3,
