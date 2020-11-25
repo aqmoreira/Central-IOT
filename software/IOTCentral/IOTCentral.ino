@@ -227,23 +227,43 @@ void controlarSemaforo() {
         Serial.print(" Via02:");
         Serial.println(via01Zona);
 
-        if ((millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia)
-            || (via01Zona == ZONA_ZPC  && via02Zona == ZONA_OFF)
-            || (via02Zona == ZONA_ZPC  && via01Zona == ZONA_OFF)
-            || (via02Zona == ZONA_OFF  && via01Zona == ZONA_OFF)
-           ) {
-          Serial.println("FASE_ON_VERMELHO - Tempo máximo ou ZPC");
-          if ( via01Zona == ZONA_ZCV || via02Zona == ZONA_ZCV) {
-            //Tempo máximo do trem na via avisar central
-            //TODO: Implementar no futuro
-          }
+
+
+        if ( (via02Zona == ZONA_OFF  && via01Zona == ZONA_OFF) && (millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia)) {
+          Serial.println("FASE_ON_VERMELHO - Zona OFF");
           faseAtualSemaforo = FASE_ON_ALERTA;
           tempoUltimaMudancaFase = millis();
         }
+
+        if ( (via01Zona == ZONA_ZPC  && via02Zona == ZONA_OFF)
+             || (via02Zona == ZONA_ZPC  && via01Zona == ZONA_OFF) ) {
+          Serial.println("FASE_ON_VERMELHO - ZPC");
+          faseAtualSemaforo = FASE_ON_ALERTA;
+          tempoUltimaMudancaFase = millis();
+        }
+
+        if ((millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia) && ( via01Zona == ZONA_ZCV || via02Zona == ZONA_ZCV))  {
+          Serial.println("FASE_ON_VERMELHO - Tempo máximo com ZCV");
+          via01Zona = ZONA_OFF;
+          via02Zona = ZONA_OFF;
+          faseAtualSemaforo = FASE_ON_ALERTA;
+          tempoUltimaMudancaFase = millis();
+          //Tempo máximo do trem na via avisar central
+          //TODO: Implementar no futuro
+        }
+
         if ( tempoUltimaPedidoZPP > tempoUltimaMudancaFase) { //indica que teve um ZPP prorrogar prazo
           Serial.println("FASE_ON_VERMELHO - PRORROZANDO PRAZO");
           tempoUltimaMudancaFase = millis();
         }
+
+
+        if ( millis() - tempoUltimaMudancaFase > tempoMaxCruzamentoVia) { //este if deve sair depois dos testes
+          Serial.println("FASE_ON_VERMELHO - Tempo máximo ");
+          faseAtualSemaforo = FASE_ON_ALERTA;
+          tempoUltimaMudancaFase = millis();
+        }
+      
 
 
       }

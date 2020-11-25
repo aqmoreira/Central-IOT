@@ -12,9 +12,9 @@
 #define TEMPO_ALERTA                  5000  //Tempo de alerta de mudança de fase pedestre e via
 #define TEMPO_AMARELO                10000  //tempo AMARELO ON e OFF
 #define TEMPO_SEGURANCA               3000
-#define TEMPO_VERDE                  18000  //tempo VERDE OFF
+#define TEMPO_VERDE                  30000  //tempo VERDE OFF
 #define TEMPO_MAXIMO_ESPERA_VLT      25000
-#define TEMPO_MINIMO_VERDE            6000
+#define TEMPO_MINIMO_VERDE           15000
 #define TEMPO_ALERTA_PISCANTE          300
 
 
