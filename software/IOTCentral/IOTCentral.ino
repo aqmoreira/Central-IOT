@@ -145,7 +145,12 @@ void setup() {
   faseAtualSemaforo = 0;
   faseAnteriorSemaforo = -1;
 
+  if ((digitalRead(SW1) == LOW)&& (digitalRead(SW2) == LOW)) {
+    Serial.println("Reset dos dados de WIFI");
+    resetFlashAreaWifi();
+  } 
 
+  
 }
 
 /**
@@ -441,6 +446,23 @@ void gravarPropriedades() {
 
 
 }
+/** Função para remover as propriedades do sistema de arquivos criado na memória */
+void removerPropriedades(){
+   if (SPIFFS.begin()) {
+    Serial.println("Removendo arquivo config.json");
+    SPIFFS.remove("/config.json");
+    
+   }
+  
+}
+
+/** Função para remover os dados da flash da área de WIFI na memória */
+void resetFlashAreaWifi(){
+  wm.resetSettings();
+  
+}
+
+
 
 /** Função para ler as propriedades do sistema de arquivos criado na memória */
 void lerPropriedades() {
@@ -580,6 +602,7 @@ void callbackMQTT(char* topic, byte* payload, unsigned int length) {
 
 /** Inicializa o wifi do esp8266 */
 void iniciarWIFI() {
+  Serial.println("Iniciando WIFI ..."); 
 
   WiFi.mode(WIFI_STA); // ajustar o modo de operação, esp defaults to STA+AP
   // gotIpEventHandler = WiFi.onStationModeGotIP(wifiObteveIPHandler);
@@ -595,11 +618,13 @@ void iniciarWIFI() {
 
 
   if ((digitalRead(SW1) == LOW) && (digitalRead(SW3) == LOW) ) { //se SW1 e SW3 OFF entra no WifiManager
+     Serial.println("WIFIManager ativado ..."); 
 
     wm.setConfigPortalBlocking(true);
     //Se desejar ressetar as configurações via código
-    //wm.resetSettings();
-    //wm.erase();
+    // wm.resetSettings();
+    // wm.erase();
+ 
     WiFiManagerParameter custom_mqtt_server("server", "mqtt server", mqttServer, 40);
     WiFiManagerParameter custom_mqtt_port("port", "mqtt port", MQTTPort, 6);
     WiFiManagerParameter custom_mqtt_user("user", "mqtt user", MQTTUser, 20);
